@@ -14,7 +14,7 @@ android {
         versionCode 1
         versionName '1.0.0'
 
-        def webUrl = project.findProperty('WEB_APP_URL') ?: 'https://a-suozhang.github.io/claude-playground/'
+        def webUrl = project.findProperty('WEB_APP_URL') ?: 'https://a-suozhang.xyz/link-stack-app/'
         buildConfigField 'String', 'WEB_APP_URL', '"' + webUrl + '"'
     }
 
