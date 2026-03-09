@@ -1,8 +1,9 @@
 package com.asuozhang.linkstack
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
+import android.widget.Button
+import android.widget.Toast
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -23,6 +24,11 @@ class MainActivity : AppCompatActivity() {
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.settings.cacheMode = WebSettings.LOAD_DEFAULT
+
+        val forceRefreshBtn: Button = findViewById(R.id.btn_force_refresh)
+        forceRefreshBtn.setOnClickListener {
+            forceRefresh()
+        }
 
         loadFromIntent(intent)
     }
@@ -54,4 +60,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun encode(v: String): String = URLEncoder.encode(v, "UTF-8")
+
+    private fun forceRefresh() {
+        webView.clearCache(true)
+        webView.clearHistory()
+        webView.reload()
+        Toast.makeText(this, "已强制刷新", Toast.LENGTH_SHORT).show()
+    }
 }

@@ -7,4 +7,15 @@
         android:id="@+id/webview"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <Button
+        android:id="@+id/btn_force_refresh"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="12dp"
+        android:backgroundTint="#1976D2"
+        android:text="强制刷新"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF" />
 </FrameLayout>
