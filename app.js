@@ -1,6 +1,7 @@
 const KEY = "link_stack_items_v1";
-const CFG_KEY = "link_stack_supabase_cfg_v1";
 const TABLE = "links";
+const SUPABASE_URL = "https://zakxymbjoxwtkwaemjmo.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_PCEzfsM9z7cTbSTSdtKsUg_AFNM9iiC";
 
 function nowIso() {
   return new Date().toISOString();
@@ -33,20 +34,14 @@ function normalizeUrl(raw) {
 }
 
 function loadCfg() {
-  try {
-    return JSON.parse(localStorage.getItem(CFG_KEY) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function saveCfg(cfg) {
-  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  return {
+    url: SUPABASE_URL,
+    anonKey: SUPABASE_ANON_KEY,
+  };
 }
 
 function hasCloud() {
-  const cfg = loadCfg();
-  return Boolean(cfg.url && cfg.anonKey);
+  return true;
 }
 
 function cloudHeaders() {
@@ -124,21 +119,16 @@ async function addItem(url, note = "", source = "manual") {
     note: note.trim(),
     status: "pending",
   };
-  if (hasCloud()) {
-    await insertCloudItem(item);
-    const next = await fetchCloudItems();
-    saveItems(next);
-  } else {
-    items.unshift(item);
-    saveItems(items);
-  }
+  await insertCloudItem(item);
+  const next = await fetchCloudItems();
+  saveItems(next);
   return { ok: true, item };
 }
 
 function updateSyncBadge() {
   const badge = document.getElementById("sync-status");
   if (!badge) return;
-  badge.textContent = hasCloud() ? "Cloud (Supabase)" : "Local only";
+  badge.textContent = "Cloud (Supabase)";
 }
 
 function render() {
@@ -166,17 +156,12 @@ function render() {
     del.type = "button";
     del.textContent = "删除";
     del.onclick = async () => {
-      if (hasCloud()) {
-        try {
-          await deleteCloudItem(item);
-          const next = await fetchCloudItems();
-          saveItems(next);
-        } catch (e) {
-          alert(`云端删除失败: ${String(e)}`);
-        }
-      } else {
-        const next = loadItems().filter((x) => x.id !== item.id);
+      try {
+        await deleteCloudItem(item);
+        const next = await fetchCloudItems();
         saveItems(next);
+      } catch (e) {
+        alert(`云端删除失败: ${String(e)}`);
       }
       render();
     };
@@ -238,12 +223,11 @@ async function handleShareTargetParams() {
 }
 
 async function refreshFromCloudIfNeeded() {
-  if (!hasCloud()) return;
   try {
     const items = await fetchCloudItems();
     saveItems(items);
   } catch (e) {
-    alert(`云端读取失败，回退本地: ${String(e)}`);
+    alert(`云端读取失败: ${String(e)}`);
   }
 }
 
@@ -252,15 +236,6 @@ function bind() {
   const exportBtn = document.getElementById("export-btn");
   const importInput = document.getElementById("import-file");
   const clearBtn = document.getElementById("clear-btn");
-  const cfgForm = document.getElementById("cfg-form");
-  const cfgUrl = document.getElementById("cfg-url");
-  const cfgKey = document.getElementById("cfg-key");
-  const cloudPullBtn = document.getElementById("cloud-pull-btn");
-  const cloudOffBtn = document.getElementById("cloud-off-btn");
-
-  const cfg = loadCfg();
-  if (cfgUrl) cfgUrl.value = cfg.url || "";
-  if (cfgKey) cfgKey.value = cfg.anonKey || "";
   updateSyncBadge();
 
   form.addEventListener("submit", async (e) => {
@@ -287,46 +262,16 @@ function bind() {
   });
   clearBtn.addEventListener("click", async () => {
     if (confirm("确认清空全部链接？")) {
-      if (hasCloud()) {
-        try {
-          await clearCloudItems();
-        } catch (e) {
-          alert(`云端清空失败: ${String(e)}`);
-          return;
-        }
+      try {
+        await clearCloudItems();
+      } catch (e) {
+        alert(`云端清空失败: ${String(e)}`);
+        return;
       }
       saveItems([]);
       render();
     }
   });
-
-  if (cfgForm) {
-    cfgForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      saveCfg({ url: cfgUrl.value.trim(), anonKey: cfgKey.value.trim() });
-      updateSyncBadge();
-      await refreshFromCloudIfNeeded();
-      render();
-      alert("Supabase 配置已保存");
-    });
-  }
-
-  if (cloudPullBtn) {
-    cloudPullBtn.addEventListener("click", async () => {
-      await refreshFromCloudIfNeeded();
-      render();
-    });
-  }
-
-  if (cloudOffBtn) {
-    cloudOffBtn.addEventListener("click", () => {
-      saveCfg({});
-      if (cfgUrl) cfgUrl.value = "";
-      if (cfgKey) cfgKey.value = "";
-      updateSyncBadge();
-      alert("已切回本地模式");
-    });
-  }
 }
 
 if ("serviceWorker" in navigator) {
