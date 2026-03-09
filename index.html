@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Link Stack App</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <h1>Link Stack App</h1>
+      <p class="hint">手机安装后可用“分享到此应用”收集链接。</p>
+
+      <section class="card">
+        <h2>快速添加</h2>
+        <form id="add-form">
+          <label>URL</label>
+          <input id="url" type="url" placeholder="https://..." required />
+          <label>备注（可选）</label>
+          <input id="note" type="text" placeholder="来源/标签" />
+          <button type="submit">加入栈</button>
+        </form>
+      </section>
+
+      <section class="card row">
+        <button id="export-btn">导出 NDJSON</button>
+        <label class="file-label">导入 NDJSON
+          <input id="import-file" type="file" accept=".ndjson,.json,.txt" />
+        </label>
+        <button id="clear-btn" class="danger">清空</button>
+      </section>
+
+      <section class="card">
+        <h2>当前栈（<span id="count">0</span>）</h2>
+        <ul id="list" class="list"></ul>
+      </section>
+    </main>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

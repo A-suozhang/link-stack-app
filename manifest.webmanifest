@@ -1,0 +1,25 @@
+{
+  "name": "Link Stack App",
+  "short_name": "LinkStack",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='18' fill='%230f766e'/%3E%3Cpath d='M34 65a14 14 0 0 1 14-14h18v10H48a4 4 0 0 0 0 8h18v10H48a14 14 0 0 1-14-14Zm60-14a14 14 0 0 1 0 28H76V69h18a4 4 0 0 0 0-8H76V51h18ZM52 70h24V60H52v10Z' fill='white'/%3E%3C/svg%3E",
+      "sizes": "128x128",
+      "type": "image/svg+xml"
+    }
+  ],
+  "share_target": {
+    "action": "./",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
