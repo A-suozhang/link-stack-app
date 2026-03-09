@@ -1,10 +1,6 @@
 const KEY = "link_stack_items_v1";
 const CFG_KEY = "link_stack_supabase_cfg_v1";
 const TABLE = "links";
-const DEFAULT_SUPABASE_CFG = {
-  url: "https://zakxymbjoxwtkwaemjmo.supabase.co",
-  anonKey: "sb_publishable_PCEzfsM9z7cTbSTSdtKsUg_AFNM9iiC",
-};
 
 function nowIso() {
   return new Date().toISOString();
@@ -38,13 +34,9 @@ function normalizeUrl(raw) {
 
 function loadCfg() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(CFG_KEY) || "{}");
-    return {
-      url: parsed.url || DEFAULT_SUPABASE_CFG.url,
-      anonKey: parsed.anonKey || DEFAULT_SUPABASE_CFG.anonKey,
-    };
+    return JSON.parse(localStorage.getItem(CFG_KEY) || "{}");
   } catch {
-    return { ...DEFAULT_SUPABASE_CFG };
+    return {};
   }
 }
 

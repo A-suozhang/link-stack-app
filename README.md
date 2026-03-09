@@ -24,7 +24,7 @@ python3 -m http.server 8899
 - 分享接收能力取决于手机浏览器对 Web Share Target 的支持
 
 ## 跨平台同步（Supabase，可选）
-当前页面已内置默认 `Supabase URL + anon key`，首次打开即为云端读写；你仍可在页面上修改配置并覆盖本地保存值。
+需要在页面手动填写 `Supabase URL + anon key`，配置只保存在当前浏览器本地存储，不会写入仓库代码。
 
 ### 最小 SQL
 ```sql
