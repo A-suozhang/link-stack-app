@@ -11,6 +11,22 @@
     <main class="wrap">
       <h1>Link Stack App</h1>
       <p class="hint">手机安装后可用“分享到此应用”收集链接。</p>
+      <p class="hint">同步模式：<strong id="sync-status">Local only</strong></p>
+
+      <section class="card">
+        <h2>Supabase 同步配置（可选）</h2>
+        <form id="cfg-form">
+          <label>Supabase URL</label>
+          <input id="cfg-url" type="url" placeholder="https://zakxymbjoxwtkwaemjmo.supabase.co" />
+          <label>Supabase anon key</label>
+          <input id="cfg-key" type="text" placeholder="sb_publishable_..." />
+          <div class="row">
+            <button type="submit">保存并启用云同步</button>
+            <button id="cloud-pull-btn" type="button">从云端拉取</button>
+            <button id="cloud-off-btn" type="button" class="danger">关闭云同步</button>
+          </div>
+        </form>
+      </section>
 
       <section class="card">
         <h2>快速添加</h2>

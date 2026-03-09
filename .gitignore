@@ -1,1 +1,8 @@
 .DS_Store
+.env
+android-app/.gradle/
+android-app/.kotlin/
+android-app/app/build/
+android-app/build/
+android-app/local.properties
+link-stack-app-repo/

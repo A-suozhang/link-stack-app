@@ -22,3 +22,22 @@ python3 -m http.server 8899
 ## 说明
 - 这是纯前端，不包含任何密钥和后端逻辑
 - 分享接收能力取决于手机浏览器对 Web Share Target 的支持
+
+## 跨平台同步（Supabase，可选）
+当前页面已内置默认 `Supabase URL + anon key`，首次打开即为云端读写；你仍可在页面上修改配置并覆盖本地保存值。
+
+### 最小 SQL
+```sql
+create table if not exists public.links (
+  id uuid primary key default gen_random_uuid(),
+  url text unique not null,
+  note text default '',
+  source text default 'manual',
+  status text default 'pending',
+  created_at timestamptz default now()
+);
+```
+
+### RLS（先用简单策略）
+如果开启 RLS，请至少允许 `anon` 的 `select/insert/delete`（MVP）。
+上线后建议再收紧为你自己的登录策略。

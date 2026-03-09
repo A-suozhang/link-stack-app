@@ -1,4 +1,10 @@
 const KEY = "link_stack_items_v1";
+const CFG_KEY = "link_stack_supabase_cfg_v1";
+const TABLE = "links";
+const DEFAULT_SUPABASE_CFG = {
+  url: "https://zakxymbjoxwtkwaemjmo.supabase.co",
+  anonKey: "sb_publishable_PCEzfsM9z7cTbSTSdtKsUg_AFNM9iiC",
+};
 
 function nowIso() {
   return new Date().toISOString();
@@ -30,7 +36,85 @@ function normalizeUrl(raw) {
   }
 }
 
-function addItem(url, note = "", source = "manual") {
+function loadCfg() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CFG_KEY) || "{}");
+    return {
+      url: parsed.url || DEFAULT_SUPABASE_CFG.url,
+      anonKey: parsed.anonKey || DEFAULT_SUPABASE_CFG.anonKey,
+    };
+  } catch {
+    return { ...DEFAULT_SUPABASE_CFG };
+  }
+}
+
+function saveCfg(cfg) {
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+}
+
+function hasCloud() {
+  const cfg = loadCfg();
+  return Boolean(cfg.url && cfg.anonKey);
+}
+
+function cloudHeaders() {
+  const cfg = loadCfg();
+  return {
+    apikey: cfg.anonKey,
+    Authorization: `Bearer ${cfg.anonKey}`,
+    "Content-Type": "application/json",
+  };
+}
+
+function cloudBase() {
+  const cfg = loadCfg();
+  return `${cfg.url.replace(/\/+$/, "")}/rest/v1/${TABLE}`;
+}
+
+async function fetchCloudItems() {
+  const qs = "?select=id,url,note,source,status,created_at&order=created_at.desc";
+  const resp = await fetch(cloudBase() + qs, { headers: cloudHeaders() });
+  if (!resp.ok) throw new Error(`cloud_fetch_failed_${resp.status}`);
+  const rows = await resp.json();
+  return rows.map((r) => ({
+    id: r.id || uuid(),
+    ts: r.created_at || nowIso(),
+    source: r.source || "cloud",
+    type: "url",
+    url: r.url,
+    note: r.note || "",
+    status: r.status || "pending",
+  }));
+}
+
+async function insertCloudItem(item) {
+  const payload = {
+    url: item.url,
+    note: item.note,
+    source: item.source,
+    status: item.status,
+    created_at: item.ts,
+  };
+  const resp = await fetch(cloudBase(), {
+    method: "POST",
+    headers: { ...cloudHeaders(), Prefer: "resolution=ignore-duplicates,return=representation" },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) throw new Error(`cloud_insert_failed_${resp.status}`);
+}
+
+async function deleteCloudItem(item) {
+  const key = item.id ? `id=eq.${encodeURIComponent(item.id)}` : `url=eq.${encodeURIComponent(item.url)}`;
+  const resp = await fetch(cloudBase() + "?" + key, { method: "DELETE", headers: cloudHeaders() });
+  if (!resp.ok) throw new Error(`cloud_delete_failed_${resp.status}`);
+}
+
+async function clearCloudItems() {
+  const resp = await fetch(cloudBase() + "?id=not.is.null", { method: "DELETE", headers: cloudHeaders() });
+  if (!resp.ok) throw new Error(`cloud_clear_failed_${resp.status}`);
+}
+
+async function addItem(url, note = "", source = "manual") {
   const normalized = normalizeUrl(url);
   if (!normalized) return { ok: false, reason: "invalid_url" };
 
@@ -48,9 +132,21 @@ function addItem(url, note = "", source = "manual") {
     note: note.trim(),
     status: "pending",
   };
-  items.unshift(item);
-  saveItems(items);
+  if (hasCloud()) {
+    await insertCloudItem(item);
+    const next = await fetchCloudItems();
+    saveItems(next);
+  } else {
+    items.unshift(item);
+    saveItems(items);
+  }
   return { ok: true, item };
+}
+
+function updateSyncBadge() {
+  const badge = document.getElementById("sync-status");
+  if (!badge) return;
+  badge.textContent = hasCloud() ? "Cloud (Supabase)" : "Local only";
 }
 
 function render() {
@@ -77,9 +173,19 @@ function render() {
     const del = document.createElement("button");
     del.type = "button";
     del.textContent = "删除";
-    del.onclick = () => {
-      const next = loadItems().filter((x) => x.id !== item.id);
-      saveItems(next);
+    del.onclick = async () => {
+      if (hasCloud()) {
+        try {
+          await deleteCloudItem(item);
+          const next = await fetchCloudItems();
+          saveItems(next);
+        } catch (e) {
+          alert(`云端删除失败: ${String(e)}`);
+        }
+      } else {
+        const next = loadItems().filter((x) => x.id !== item.id);
+        saveItems(next);
+      }
       render();
     };
 
@@ -109,7 +215,7 @@ async function importNdjson(file) {
     try {
       const obj = JSON.parse(line);
       if (obj.url) {
-        const r = addItem(obj.url, obj.note || "", obj.source || "import");
+        const r = await addItem(obj.url, obj.note || "", obj.source || "import");
         if (r.ok) n += 1;
       }
     } catch {
@@ -120,7 +226,7 @@ async function importNdjson(file) {
   render();
 }
 
-function handleShareTargetParams() {
+async function handleShareTargetParams() {
   const q = new URLSearchParams(location.search);
   const title = q.get("title") || "";
   const text = q.get("text") || "";
@@ -130,7 +236,7 @@ function handleShareTargetParams() {
   let added = 0;
   for (const c of candidates) {
     if (!c.startsWith("http://") && !c.startsWith("https://")) continue;
-    const r = addItem(c, "shared", "share_target");
+    const r = await addItem(c, "shared", "share_target");
     if (r.ok) added += 1;
   }
   if (added > 0) {
@@ -139,17 +245,37 @@ function handleShareTargetParams() {
   }
 }
 
+async function refreshFromCloudIfNeeded() {
+  if (!hasCloud()) return;
+  try {
+    const items = await fetchCloudItems();
+    saveItems(items);
+  } catch (e) {
+    alert(`云端读取失败，回退本地: ${String(e)}`);
+  }
+}
+
 function bind() {
   const form = document.getElementById("add-form");
   const exportBtn = document.getElementById("export-btn");
   const importInput = document.getElementById("import-file");
   const clearBtn = document.getElementById("clear-btn");
+  const cfgForm = document.getElementById("cfg-form");
+  const cfgUrl = document.getElementById("cfg-url");
+  const cfgKey = document.getElementById("cfg-key");
+  const cloudPullBtn = document.getElementById("cloud-pull-btn");
+  const cloudOffBtn = document.getElementById("cloud-off-btn");
 
-  form.addEventListener("submit", (e) => {
+  const cfg = loadCfg();
+  if (cfgUrl) cfgUrl.value = cfg.url || "";
+  if (cfgKey) cfgKey.value = cfg.anonKey || "";
+  updateSyncBadge();
+
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const url = document.getElementById("url").value;
     const note = document.getElementById("note").value;
-    const r = addItem(url, note, "manual");
+    const r = await addItem(url, note, "manual");
     if (!r.ok && r.reason === "duplicate") {
       alert("重复链接，已忽略");
       return;
@@ -163,22 +289,61 @@ function bind() {
   });
 
   exportBtn.addEventListener("click", exportNdjson);
-  importInput.addEventListener("change", (e) => {
+  importInput.addEventListener("change", async (e) => {
     const file = e.target.files && e.target.files[0];
-    if (file) importNdjson(file);
+    if (file) await importNdjson(file);
   });
-  clearBtn.addEventListener("click", () => {
+  clearBtn.addEventListener("click", async () => {
     if (confirm("确认清空全部链接？")) {
+      if (hasCloud()) {
+        try {
+          await clearCloudItems();
+        } catch (e) {
+          alert(`云端清空失败: ${String(e)}`);
+          return;
+        }
+      }
       saveItems([]);
       render();
     }
   });
+
+  if (cfgForm) {
+    cfgForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      saveCfg({ url: cfgUrl.value.trim(), anonKey: cfgKey.value.trim() });
+      updateSyncBadge();
+      await refreshFromCloudIfNeeded();
+      render();
+      alert("Supabase 配置已保存");
+    });
+  }
+
+  if (cloudPullBtn) {
+    cloudPullBtn.addEventListener("click", async () => {
+      await refreshFromCloudIfNeeded();
+      render();
+    });
+  }
+
+  if (cloudOffBtn) {
+    cloudOffBtn.addEventListener("click", () => {
+      saveCfg({});
+      if (cfgUrl) cfgUrl.value = "";
+      if (cfgKey) cfgKey.value = "";
+      updateSyncBadge();
+      alert("已切回本地模式");
+    });
+  }
 }
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
-handleShareTargetParams();
-bind();
-render();
+(async () => {
+  await refreshFromCloudIfNeeded();
+  await handleShareTargetParams();
+  bind();
+  render();
+})();
