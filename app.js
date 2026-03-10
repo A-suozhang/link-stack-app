@@ -58,9 +58,17 @@ function cloudBase() {
   return `${cfg.url.replace(/\/+$/, "")}/rest/v1/${TABLE}`;
 }
 
+function cloudUrl(query = "") {
+  const cfg = loadCfg();
+  const url = new URL(cloudBase() + query);
+  // Redundant fallback: keep apikey in query in case some environments strip custom headers.
+  url.searchParams.set("apikey", cfg.anonKey);
+  return url.toString();
+}
+
 async function fetchCloudItems() {
   const qs = "?select=id,url,note,source,status,created_at&order=created_at.desc";
-  const resp = await fetch(cloudBase() + qs, { headers: cloudHeaders() });
+  const resp = await fetch(cloudUrl(qs), { headers: cloudHeaders() });
   if (!resp.ok) throw new Error(`cloud_fetch_failed_${resp.status}`);
   const rows = await resp.json();
   return rows.map((r) => ({
@@ -82,7 +90,7 @@ async function insertCloudItem(item) {
     status: item.status,
     created_at: item.ts,
   };
-  const resp = await fetch(cloudBase(), {
+  const resp = await fetch(cloudUrl(), {
     method: "POST",
     headers: { ...cloudHeaders(), Prefer: "resolution=ignore-duplicates,return=representation" },
     body: JSON.stringify(payload),
@@ -92,12 +100,12 @@ async function insertCloudItem(item) {
 
 async function deleteCloudItem(item) {
   const key = item.id ? `id=eq.${encodeURIComponent(item.id)}` : `url=eq.${encodeURIComponent(item.url)}`;
-  const resp = await fetch(cloudBase() + "?" + key, { method: "DELETE", headers: cloudHeaders() });
+  const resp = await fetch(cloudUrl("?" + key), { method: "DELETE", headers: cloudHeaders() });
   if (!resp.ok) throw new Error(`cloud_delete_failed_${resp.status}`);
 }
 
 async function clearCloudItems() {
-  const resp = await fetch(cloudBase() + "?id=not.is.null", { method: "DELETE", headers: cloudHeaders() });
+  const resp = await fetch(cloudUrl("?id=not.is.null"), { method: "DELETE", headers: cloudHeaders() });
   if (!resp.ok) throw new Error(`cloud_clear_failed_${resp.status}`);
 }
 
